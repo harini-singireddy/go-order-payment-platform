@@ -1,4 +1,4 @@
-module github.com/harini-singireddy/go-order-payment-platform/pkg
+module opp/pkg
 
 go 1.27.3
 
