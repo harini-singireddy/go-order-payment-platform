@@ -13,8 +13,8 @@ replicating auth logic in every service.
 - On success it injects `user_id` into the request context and forwards
   `X-User-Id` downstream.
 - Internal services trust the gateway; they do not validate JWTs.
-- `/login` issues a token for any username (simulated — a real system
-  would verify credentials against a user store).
+- `/login` issues a token for any username (simulated — a real system would
+  verify credentials against a user store).
 
 ## Rationale
 - One auth implementation, not five. A bug in one service's auth middleware
@@ -26,9 +26,9 @@ replicating auth logic in every service.
 
 ## Consequences
 - Internal services must not be reachable from outside the network, or
-  they can be called without auth. Enforced by network policy in prod.
+  they can be called without auth. Enforced by network policy in production.
 - Token revocation is not supported (tokens are valid until expiry, 24h).
-  A real system would use short-lived tokens + a refresh endpoint, or a
+  A real system would use short-lived tokens plus a refresh endpoint, or a
   revocation list.
 - `alg: none` attacks are blocked by the signing-method check in the
   middleware (`t.Method.(*jwt.SigningMethodHMAC)`).
