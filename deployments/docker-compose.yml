@@ -16,8 +16,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-    networks:
-      - opp-net
+    networks: [opp-net]
 
   redis:
     image: redis:7-alpine
@@ -31,8 +30,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    networks:
-      - opp-net
+    networks: [opp-net]
 
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
@@ -41,8 +39,8 @@ services:
       RABBITMQ_DEFAULT_USER: opp
       RABBITMQ_DEFAULT_PASS: opp_dev_password
     ports:
-      - "5672:5672"    # AMQP
-      - "15672:15672"  # Management UI
+      - "5672:5672"
+      - "15672:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -50,8 +48,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    networks:
-      - opp-net
+    networks: [opp-net]
 
   prometheus:
     image: prom/prometheus:v2.54.1
@@ -64,10 +61,9 @@ services:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
-    networks:
-      - opp-net
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks: [opp-net]
 
   grafana:
     image: grafana/grafana:11.2.0
@@ -81,12 +77,94 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on: [prometheus]
+    networks: [opp-net]
+
+  # --- Application services ---
+  order:
+    build:
+      context: ..
+      dockerfile: services/order/Dockerfile
+    container_name: opp-order
+    environment:
+      DATABASE_URL: postgres://opp:opp_dev_password@postgres:5432/orders_db?sslmode=disable
+      AMQP_URL: amqp://opp:opp_dev_password@rabbitmq:5672/
+    ports:
+      - "8081:8081"
+      - "9091:9091"
     depends_on:
-      - prometheus
-    networks:
-      - opp-net
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks: [opp-net]
+
+  inventory:
+    build:
+      context: ..
+      dockerfile: services/inventory/Dockerfile
+    container_name: opp-inventory
+    environment:
+      DATABASE_URL: postgres://opp:opp_dev_password@postgres:5432/inventory_db?sslmode=disable
+      AMQP_URL: amqp://opp:opp_dev_password@rabbitmq:5672/
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks: [opp-net]
+
+  payment:
+    build:
+      context: ..
+      dockerfile: services/payment/Dockerfile
+    container_name: opp-payment
+    environment:
+      DATABASE_URL: postgres://opp:opp_dev_password@postgres:5432/payments_db?sslmode=disable
+      AMQP_URL: amqp://opp:opp_dev_password@rabbitmq:5672/
+      ORDER_GRPC_ADDR: order:9091
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      order:
+        condition: service_started
+    networks: [opp-net]
+
+  notification:
+    build:
+      context: ..
+      dockerfile: services/notification/Dockerfile
+    container_name: opp-notification
+    environment:
+      AMQP_URL: amqp://opp:opp_dev_password@rabbitmq:5672/
+    ports:
+      - "8084:8084"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks: [opp-net]
+
+  gateway:
+    build:
+      context: ..
+      dockerfile: services/gateway/Dockerfile
+    container_name: opp-gateway
+    environment:
+      ORDER_HTTP_URL: http://order:8081
+      JWT_SECRET: dev-secret-change-me
+    ports:
+      - "8080:8080"
+    depends_on:
+      order:
+        condition: service_started
+    networks: [opp-net]
+
 volumes:
   postgres_data:
   redis_data:
