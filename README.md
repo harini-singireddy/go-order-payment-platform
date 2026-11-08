@@ -27,6 +27,21 @@ Production-grade order & payment microservices in Go — gRPC, RabbitMQ, Postgre
 ## Quick Start
 
 ```bash
+# 1. Start infrastructure (Postgres, Redis, RabbitMQ, Prometheus, Grafana)
+make up
+
+# 2. Apply migrations (creates tables in orders_db, payments_db, inventory_db)
+make migrate
+
+# 3. Seed inventory
+make seed
+
+# 4. Run the three services — one per terminal
+make run-order       # HTTP :8081, gRPC :9091
+make run-inventory   # HTTP :8083, consumes order.created
+make run-payment     # consumes order.created, gRPC client to Order
+
+```bash
 docker compose -f deployments/docker-compose.yml up -d
 make migrate
 make run-all
