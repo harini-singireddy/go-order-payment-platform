@@ -22,6 +22,17 @@
 | Payment | Order | Sync | gRPC (`GetOrder` — read authoritative status and total) |
 | Order | RabbitMQ | Async | AMQP (consumes `payment.completed` → status `pending` → `paid`) |
 
+## Trust boundary
+
+The Gateway is the only component reachable from untrusted clients. It
+terminates JWT auth and rate limits. All internal traffic — gRPC between
+Payment and Order, RabbitMQ events, Order's HTTP — stays inside the trust
+boundary and does NOT pass through the Gateway.
+
+In production this is enforced by network policy: Order's :9091 is only
+reachable from Payment's pod, Order's :8081 only from the Gateway. On
+localhost, everything is reachable, which is why the boundary is implicit.
+
 ## Ports
 
 | Service | HTTP | gRPC |
