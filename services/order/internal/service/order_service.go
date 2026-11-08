@@ -7,6 +7,8 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"opp/pkg/broker"
 
@@ -15,10 +17,17 @@ import (
 )
 
 type OrderService struct {
-	repo  *repository.OrderRepo
-	pub   broker.Publisher
-	log   *slog.Logger
+	repo *repository.OrderRepo
+	pub  broker.Publisher
+	log  *slog.Logger
 }
+
+var ordersCreated = promauto.NewCounter(prometheus.CounterOpts{
+	Namespace: "opp",
+	Subsystem: "order",
+	Name:      "orders_created_total",
+	Help:      "Total orders created.",
+})
 
 func NewOrderService(repo *repository.OrderRepo, pub broker.Publisher, log *slog.Logger) *OrderService {
 	return &OrderService{repo: repo, pub: pub, log: log}
@@ -51,6 +60,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, idemKey string, o *domai
 
 	err := s.repo.Insert(ctx, o)
 	if err == nil {
+		ordersCreated.Inc()
 		s.publishCreated(ctx, o)
 		return o, true, nil
 	}

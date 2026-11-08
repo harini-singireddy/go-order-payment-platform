@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/harini-singireddy/go-order-payment-platform/services/payment/internal/consumer"
 	"github.com/harini-singireddy/go-order-payment-platform/services/payment/internal/repository"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -48,6 +50,21 @@ func main() {
 	}
 
 	logg.Info("payment service running")
+	mux := http.NewServeMux()
+
+	mux.Handle("/healthz", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	}))
+	mux.Handle("/metrics", promhttp.Handler())
+
+	srv := &http.Server{Addr: ":8082", Handler: mux}
+	go func() {
+		logg.Info("payment HTTP listening", "addr", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logg.Error("http listen failed", "err", err)
+		}
+	}()
 	<-ctx.Done()
 	logg.Info("shutting down")
 }

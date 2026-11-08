@@ -66,6 +66,8 @@ services:
       - "--storage.tsdb.path=/prometheus"
     networks:
       - opp-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   grafana:
     image: grafana/grafana:11.2.0
@@ -83,7 +85,8 @@ services:
       - prometheus
     networks:
       - opp-net
-
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 volumes:
   postgres_data:
   redis_data:

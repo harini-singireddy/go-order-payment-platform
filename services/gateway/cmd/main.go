@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"opp/pkg/logger"
 	"opp/pkg/middleware"
@@ -59,6 +60,8 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	})
+
+	r.Get("/metrics", promhttp.Handler().ServeHTTP)
 
 	// Protected: all /orders/* traffic goes through JWT then proxy
 	r.Group(func(r chi.Router) {

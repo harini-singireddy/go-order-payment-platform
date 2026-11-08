@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/harini-singireddy/go-order-payment-platform/services/inventory/internal/repository"
 )
@@ -19,6 +20,7 @@ func (h *InventoryHandler) Routes() http.Handler {
 		w.WriteHeader(200)
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	})
+	r.Get("/metrics", promhttp.Handler().ServeHTTP)
 	r.Get("/inventory/{productID}", h.get)
 	return r
 }

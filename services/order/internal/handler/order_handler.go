@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/harini-singireddy/go-order-payment-platform/services/order/internal/domain"
 	"github.com/harini-singireddy/go-order-payment-platform/services/order/internal/repository"
@@ -27,6 +28,7 @@ func (h *OrderHandler) Routes() http.Handler {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	})
+	r.Get("/metrics", promhttp.Handler().ServeHTTP)
 	r.Post("/orders", h.create)
 	r.Get("/orders/{id}", h.get)
 	return r
