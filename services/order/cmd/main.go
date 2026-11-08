@@ -9,9 +9,11 @@ import (
 	"syscall"
 	"time"
 
+	"opp/pkg/broker"
 	"opp/pkg/database"
 	"opp/pkg/logger"
 	"opp/pkg/middleware"
+
 	"github.com/harini-singireddy/go-order-payment-platform/services/order/internal/handler"
 	"github.com/harini-singireddy/go-order-payment-platform/services/order/internal/repository"
 	"github.com/harini-singireddy/go-order-payment-platform/services/order/internal/service"
@@ -26,6 +28,10 @@ func main() {
 	if dsn == "" {
 		dsn = "postgres://opp:opp_dev_password@localhost:5432/orders_db?sslmode=disable"
 	}
+	amqpURL := os.Getenv("AMQP_URL")
+	if amqpURL == "" {
+		amqpURL = "amqp://opp:opp_dev_password@localhost:5672/"
+	}
 
 	pool, err := database.Connect(ctx, database.Config{DSN: dsn})
 	if err != nil {
@@ -33,21 +39,21 @@ func main() {
 	}
 	defer pool.Close()
 
+	rb, err := broker.NewRabbit(amqpURL, logg, "orders")
+	if err != nil {
+		log.Fatalf("connect rabbit: %v", err)
+	}
+	defer rb.Close()
+
 	repo := repository.NewOrderRepo(pool)
-	svc := service.NewOrderService(repo)
+	svc := service.NewOrderService(repo, rb, logg)
 	h := handler.NewOrderHandler(svc)
 
 	var root http.Handler = h.Routes()
 	root = middleware.RequestID(root)
 	root = middleware.Metrics("order")(root)
 
-	srv := &http.Server{
-		Addr:         ":8081",
-		Handler:      root,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-	}
-
+	srv := &http.Server{Addr: ":8081", Handler: root, ReadTimeout: 5 * time.Second, WriteTimeout: 10 * time.Second}
 	go func() {
 		logg.Info("order service listening", "addr", srv.Addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
