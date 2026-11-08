@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package order.v1;
+
+option go_package = "github.com/harini-singireddy/go-order-payment-platform/proto/order/v1;orderv1";
+
+service OrderService {
+  rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
+}
+
+message GetOrderRequest {
+  string id = 1;
+}
+
+message GetOrderResponse {
+  string id = 1;
+  string customer_id = 2;
+  string status = 3;
+  int64 total_cents = 4;
+}

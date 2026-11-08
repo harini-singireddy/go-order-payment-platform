@@ -130,3 +130,16 @@ func (r *OrderRepo) loadItems(ctx context.Context, orderID uuid.UUID) ([]domain.
 	}
 	return items, rows.Err()
 }
+
+// MarkPaid transitions an order from pending to paid idempotently.
+func (r *OrderRepo) MarkPaid(ctx context.Context, id uuid.UUID) error {
+	const q = `
+		UPDATE orders SET status = 'paid', updated_at = now()
+		WHERE id = $1 AND status = 'pending'
+	`
+	_, err := r.pool.Exec(ctx, q, id)
+	if err != nil {
+		return fmt.Errorf("mark paid: %w", err)
+	}
+	return nil
+}
