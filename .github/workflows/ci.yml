@@ -18,11 +18,13 @@ jobs:
           go-version: '1.27'
           cache: true
           cache-dependency-path: |
-            go.work.sum
             **/go.sum
 
-      - name: Sync workspace
-        run: go work sync
+      - name: Create workspace
+        run: |
+          go work init
+          go work use ./pkg ./proto ./services/gateway ./services/order ./services/payment ./services/inventory ./services/notification
+          go work sync
 
       - name: Build all modules
         run: |
